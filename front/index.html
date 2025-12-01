@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>업무용 관리 시스템</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            user-select: none;
+        }
+        
+        #sidebar { transition: width 0.3s ease-in-out; }
+        #popupOverlay { transition: opacity 0.2s ease-in-out; }
+        #popupContainer { transition: width 0.2s, height 0.2s; }
+
+        /* [수정] 로그 창 스타일 */
+        #logWindow {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            background-color: rgba(0, 0, 0, 0.9); /* 본문 배경 더 어둡게 */
+            z-index: 9999; /* 최상단 */
+            display: none; /* 초기엔 숨김 */
+            flex-direction: column;
+            border-top: 1px solid #39ff14; /* 상단 테두리를 형광색으로 포인트 */
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+        }
+
+        /* [수정] 검은 배경, 형광색 글씨 헤더 */
+        #logHeader {
+            background-color: #000; /* 검은색 배경 */
+            color: #39ff14; /* 형광색 글씨 (네온 그린) */
+            padding: 4px 12px;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 30px;
+            flex-shrink: 0;
+            border-bottom: 1px solid #333; /* 헤더 구분선 */
+        }
+
+        /* 로그 내용 영역 */
+        #logContent {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            color: #ddd; /* 본문 로그는 약간 톤다운된 흰색 */
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        /* 스크롤바 커스텀 */
+        #logContent::-webkit-scrollbar { width: 8px; }
+        #logContent::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        #logContent::-webkit-scrollbar-track { background: #111; }
+
+        /* [F12] 닫기 버튼 스타일 */
+        .close-btn {
+            color: #fff; /* 흰색 볼드체 유지 */
+            background-color: #333;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            border: 1px solid #555;
+            font-size: 11px;
+        }
+        .close-btn:hover { background-color: #555; border-color: #777; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen overflow-hidden flex flex-row-reverse" oncontextmenu="return false" ondragstart="return false">
+
+    <!-- [로그 윈도우] -->
+    <div id="logWindow">
+        <div id="logHeader">
+            <!-- 메모리 정보 표시 영역 (형광색 글씨) -->
+            <span id="memStatsInfo">Waiting for stats...</span>
+            
+            <!-- 닫기 버튼 (흰색 볼드체) -->
+            <span class="close-btn" onclick="toggleLogWindow()">[F12]</span>
+        </div>
+        <div id="logContent">
+            <!-- 로그 메시지가 여기에 역순으로 쌓임 -->
+        </div>
+    </div>
+
+    <!-- 팝업 모달 레이어 -->
+    <div id="popupOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center opacity-0 p-4">
+        <div id="popupContainer" class="bg-white rounded-lg shadow-2xl overflow-hidden relative w-auto h-auto max-w-[95vw] max-h-[90vh] min-w-[300px] min-h-[200px] flex flex-col">
+            <button onclick="closePopup()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 z-10">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <iframe id="popupFrame" src="" class="w-full h-full border-none block"></iframe>
+        </div>
+    </div>
+
+    <!-- 사이드바 -->
+    <aside id="sidebar" class="w-64 bg-slate-800 text-white flex flex-col shadow-xl z-20 overflow-hidden whitespace-nowrap">
+        <div class="h-16 min-h-[4rem] flex items-center justify-center border-b border-slate-700 bg-slate-900">
+            <h1 class="text-xl font-bold"><i class="fa-solid fa-cube mr-2"></i>Admin System</h1>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1">
+                <li><a href="#" class="flex items-center px-6 py-3 bg-slate-700 border-r-4 border-blue-500 text-white"><i class="fa-solid fa-chart-line w-6"></i><span class="font-medium">대시보드</span></a></li>
+                <li><a href="#" class="flex items-center px-6 py-3 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"><i class="fa-solid fa-users w-6"></i><span>회원 관리</span></a></li>
+                <li><a href="#" class="flex items-center px-6 py-3 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"><i class="fa-solid fa-box-open w-6"></i><span>재고 관리</span></a></li>
+            </ul>
+        </nav>
+        <div class="p-4 border-t border-slate-700 bg-slate-900 min-h-[5rem]">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold shrink-0">A</div>
+                <div><p class="text-sm font-semibold">관리자</p><p class="text-xs text-slate-400">admin@company.com</p></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
+            <h2 class="text-xl font-bold text-gray-800">대시보드 개요</h2>
+            <div class="flex items-center gap-4">
+                <button class="p-2 text-gray-500 hover:text-blue-600 transition-colors"><i class="fa-regular fa-bell text-xl"></i></button>
+                <button onclick="toggleSidebar()" class="p-2 text-gray-500 hover:text-blue-600 transition-colors"><i id="toggleIcon" class="fa-solid fa-chevron-right text-xl"></i></button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 min-h-[400px] flex flex-col items-center justify-center text-center">
+                <div class="mb-6 bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-window-restore text-3xl text-blue-600"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">상세 업무 처리</h3>
+                <p class="text-gray-500 mb-8 max-w-md">
+                    개별 업무 처리를 위해 별도의 팝업창을 엽니다.<br>
+                    <strong>[F12]</strong> 키를 누르면 시스템 로그를 확인할 수 있습니다.
+                </p>
+                <button onclick="openPopup()" class="group relative inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-md hover:shadow-lg">
+                    <span><i class="fa-solid fa-arrow-up-right-from-square mr-2"></i>업무 팝업 열기</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 로그 윈도우 제어 로직 ---
+        function toggleLogWindow() {
+            const win = document.getElementById('logWindow');
+            if (win.style.display === 'none' || win.style.display === '') {
+                win.style.display = 'flex';
+            } else {
+                win.style.display = 'none';
+            }
+        }
+
+        // F12 키 감지 및 개발자 도구 방지
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12') {
+                e.preventDefault(); // 기본 개발자 도구 실행 방지
+                toggleLogWindow();  // 커스텀 로그창 토글
+            }
+            // 소스보기 등 다른 단축키 방지
+            if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) || 
+               (e.ctrlKey && (e.key === 'U' || e.key === 'u'))) {
+                e.preventDefault();
+            }
+        });
+
+        // SSE 연결
+        (function() {
+            const eventSource = new EventSource('/events');
+
+            // 로그 메시지 수신
+            eventSource.addEventListener('log', function(e) {
+                const logContent = document.getElementById('logContent');
+                const div = document.createElement('div');
+                div.textContent = e.data; 
+                div.style.borderBottom = "1px solid #333"; 
+
+                // 역순 출력
+                logContent.prepend(div);
+
+                if (logContent.children.length > 1000) {
+                    logContent.lastChild.remove();
+                }
+            });
+
+            // 메모리 통계 수신
+            eventSource.addEventListener('stats', function(e) {
+                const statsInfo = document.getElementById('memStatsInfo');
+                statsInfo.textContent = e.data;
+            });
+
+            eventSource.onerror = function() {
+                eventSource.close();
+            };
+        })();
+
+        // --- 팝업 및 UI 제어 로직 ---
+        function openPopup() {
+            const overlay = document.getElementById('popupOverlay');
+            const iframe = document.getElementById('popupFrame');
+            iframe.src = 'popup.html';
+            overlay.classList.remove('hidden');
+            setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+        }
+
+        function closePopup() {
+            const overlay = document.getElementById('popupOverlay');
+            const iframe = document.getElementById('popupFrame');
+            const container = document.getElementById('popupContainer');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                iframe.src = '';
+                container.style.width = 'auto';
+                container.style.height = 'auto';
+            }, 200);
+        }
+
+        function resizeModal(width, height) {
+            const container = document.getElementById('popupContainer');
+            if (container) {
+                container.style.width = width + 'px';
+                container.style.height = height + 'px';
+            }
+        }
+
+        window.closePopup = closePopup;
+        window.resizeModal = resizeModal;
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('toggleIcon');
+            if (sidebar.classList.contains('w-64')) {
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-0');
+                icon.classList.remove('fa-chevron-right');
+                icon.classList.add('fa-bars');
+            } else {
+                sidebar.classList.remove('w-0');
+                sidebar.classList.add('w-64');
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-chevron-right');
+            }
+        }
+    </script>
+</body>
+</html>

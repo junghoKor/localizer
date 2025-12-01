@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>업무 상세 처리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; }
+    </style>
+</head>
+<!-- 
+    [변경] body에서 h-screen 제거, w-[600px] 등 고정 너비 권장
+    - 내용물 크기를 정확히 측정하기 위해 inline-block 처럼 동작하는 래퍼가 있으면 좋습니다.
+    - 여기서는 body에 적절한 min-width를 주어 모양을 잡습니다.
+-->
+<body class="bg-gray-50 p-6 flex flex-col min-w-[500px] max-w-[640px]">
+
+    <div id="contentWrapper">
+        <!-- 팝업 헤더 -->
+        <header class="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
+            <h1 class="text-lg font-bold text-gray-800 flex items-center">
+                <i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>
+                주문 상세 정보 입력
+            </h1>
+            <span class="text-xs text-gray-400 font-mono">ID: #ORD-2023-8891</span>
+        </header>
+
+        <!-- 팝업 본문 (Form) -->
+        <form class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">고객명</label>
+                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="홍길동" value="김철수">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">주문 일자</label>
+                    <input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" value="2023-10-27">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">담당 부서</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option>영업 1팀</option>
+                        <option selected>영업 2팀</option>
+                        <option>CS팀</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">진행 상태</label>
+                <div class="flex gap-4 mt-1">
+                    <label class="flex items-center">
+                        <input type="radio" name="status" class="text-blue-600 focus:ring-blue-500 h-4 w-4" checked>
+                        <span class="ml-2 text-sm text-gray-600">처리 중</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="status" class="text-blue-600 focus:ring-blue-500 h-4 w-4">
+                        <span class="ml-2 text-sm text-gray-600">보류</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="status" class="text-blue-600 focus:ring-blue-500 h-4 w-4">
+                        <span class="ml-2 text-sm text-gray-600">완료</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">메모</label>
+                <textarea rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none" placeholder="특이사항을 입력하세요..."></textarea>
+            </div>
+        </form>
+
+        <!-- 팝업 푸터 (버튼) -->
+        <div class="pt-4 mt-4 border-t border-gray-200 flex justify-end gap-2">
+            <button onclick="window.parent.closePopup()" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 text-sm transition-colors">
+                취소
+            </button>
+            
+            <!-- [확인] alert 후 창 닫기 -->
+            <button onclick="saveAndClose()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm shadow-sm transition-colors">
+                <i class="fa-solid fa-check mr-1"></i> 저장
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 저장 버튼 클릭 시 실행될 함수
+        function saveAndClose() {
+            // 1. 알림창 표시 (이 시점에서 코드가 잠시 멈춤)
+            alert('저장되었습니다.');
+            
+            // 2. 사용자가 알림창의 '확인'을 누르면 이 줄이 실행되어 창이 닫힘
+            window.parent.closePopup();
+        }
+
+        // 페이지 로드 완료 시 부모에게 자신의 크기를 알림
+        window.addEventListener('load', function() {
+            sendSizeToParent();
+        });
+
+        // 창 크기가 변할 때도 알림 (선택 사항)
+        window.addEventListener('resize', sendSizeToParent);
+
+        function sendSizeToParent() {
+            // body 자체의 크기보다는 콘텐츠 전체를 감싸는 높이를 측정하는 것이 정확합니다.
+            // 여백(padding) 등을 고려하여 scrollWidth/Height를 사용합니다.
+            const width = document.body.scrollWidth; // 혹은 document.documentElement.scrollWidth
+            const height = document.body.scrollHeight; // 콘텐츠 전체 높이
+            
+            // 부모 창의 resizeModal 함수 호출
+            if (window.parent && window.parent.resizeModal) {
+                // 약간의 여유분(스크롤바 방지용)을 더해줄 수도 있습니다.
+                window.parent.resizeModal(width, height);
+            }
+        }
+    </script>
+</body>
+</html>
